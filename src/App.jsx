@@ -3,7 +3,7 @@ import backgroundImage from "./assets/image.png"; // Uncommented the image impor
 
 const CanvasWithBoxes = () => {
   const canvasSize = 52; // Size of the canvas in cm
-  const boxSize = 1; // Size of each small box in cm
+  const boxSize = 0.1; // Size of each small box in cm
 
   const numberOfBoxesX = Math.floor(canvasSize / boxSize);
   const numberOfBoxesY = Math.floor(canvasSize / boxSize);
