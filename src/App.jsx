@@ -2,7 +2,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { throttle } from 'lodash'; // Ensure lodash is installed
-import map from "./assets/image3.png"
+import map from "./assets/image4.svg"
 const App = () => {
   const canvasSize = 520; // in centimeters
   const boxSize = 1; // in centimeters
