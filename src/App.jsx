@@ -1,166 +1,177 @@
-import React, { useState } from "react";
-import backgroundImage from "./assets/image.png"; // Uncommented the image import
+/* eslint-disable no-unused-vars */
+/* eslint-disable react-hooks/exhaustive-deps */
+import React, { useState, useRef, useCallback, useMemo } from 'react';
+import { throttle } from 'lodash'; // Ensure lodash is installed
+import map from "./assets/image.png"
+const App = () => {
+  const canvasSize = 52; // in centimeters
+  const boxSize = 0.1; // in centimeters
+  const numBoxes = Math.floor(canvasSize / boxSize);
 
-const CanvasWithBoxes = () => {
-  const canvasSize = 52; // Size of the canvas in cm
-  const boxSize = 0.1; // Size of each small box in cm
+  // Using a Set to track selected cells for more efficient updates
+  const [selectedCells, setSelectedCells] = useState(new Set());
+  // Additional state to track cells that are highlighted during dragging
+  const [highlightedCells, setHighlightedCells] = useState(new Set());
+  const [isDragging, setIsDragging] = useState(false);
+  const startCellIndexRef = useRef(null);
+  const endCellIndexRef = useRef(null);
 
-  const numberOfBoxesX = Math.floor(canvasSize / boxSize);
-  const numberOfBoxesY = Math.floor(canvasSize / boxSize);
+  // useMemo to avoid recalculating grid cells unless numBoxes changes
+  const gridCells = useMemo(() => Array.from({ length: numBoxes * numBoxes }), [numBoxes]);
 
-  const centerBoxX = Math.floor(numberOfBoxesX / 2);
-  const centerBoxY = Math.floor(numberOfBoxesY / 2);
 
-  const [selectedBoxes, setSelectedBoxes] = useState([]);
-  const [isDrawing, setIsDrawing] = useState(false);
+  // calculate the corners of the selected area
+  const calculateCorners = (start, end) => {
+    const startRow = Math.floor(start / numBoxes);
+    const startCol = start % numBoxes;
+    const endRow = Math.floor(end / numBoxes);
+    const endCol = end % numBoxes;
 
-  const boxes = [];
-  for (let i = 0; i < numberOfBoxesX; i++) {
-    for (let j = 0; j < numberOfBoxesY; j++) {
-      const x = i * boxSize;
-      const y = j * boxSize;
-      const isCenterLargeBox =
-        i >= 1 / boxSize &&
-        i <= 51 / boxSize &&
-        j >= 1 / boxSize &&
-        j <= 51 / boxSize;
+    const topLeft = Math.min(startRow, endRow) * numBoxes + Math.min(startCol, endCol);
+    const topRight = Math.min(startRow, endRow) * numBoxes + Math.max(startCol, endCol);
+    const bottomLeft = Math.max(startRow, endRow) * numBoxes + Math.min(startCol, endCol);
+    const bottomRight = Math.max(startRow, endRow) * numBoxes + Math.max(startCol, endCol);
 
-      const isCenterSmallBox =
-        i === centerBoxX && j === centerBoxY;
-
-      const isSelected = selectedBoxes.some(
-        (selectedBox) =>
-          selectedBox.x === x &&
-          selectedBox.y === y &&
-          selectedBox.width === boxSize &&
-          selectedBox.height === boxSize
-      );
-
-      const selectedColor = isSelected ? selectedBoxes.find(box => box.x === x && box.y === y).color : null;
-
-      boxes.push({
-        id: `${i}-${j}`,
-        x,
-        y,
-        width: boxSize,
-        height: boxSize,
-        isCenterLargeBox,
-        isCenterSmallBox,
-        isSelected,
-        selectedColor,
-      });
-    }
-  }
-
-  // Log the number of small boxes
-  console.log("Number of small boxes:", boxes.length);
-
-  const handleBoxClick = (clickedBox) => {
-    const isBoxSelected = selectedBoxes.some(
-      (box) =>
-        box.x === clickedBox.x &&
-        box.y === clickedBox.y &&
-        box.width === clickedBox.width &&
-        box.height === clickedBox.height
-    );
-
-    let updatedSelectedBoxes;
-
-    if (isBoxSelected) {
-      updatedSelectedBoxes = selectedBoxes.filter(
-        (box) =>
-          box.x !== clickedBox.x ||
-          box.y !== clickedBox.y ||
-          box.width !== clickedBox.width ||
-          box.height !== clickedBox.height
-      );
-    } else {
-      // Set a default color or you can prompt the user to choose a color
-      const color = prompt("Enter color for the box (e.g., red):") || "red";
-      clickedBox.color = color;
-      updatedSelectedBoxes = [...selectedBoxes, clickedBox];
-    }
-
-    setSelectedBoxes(updatedSelectedBoxes);
+    return { topLeft, topRight, bottomLeft, bottomRight };
   };
 
-  const handleMouseDown = () => {
-    setIsDrawing(true);
+  // State to track the color of each selected cell
+  const [cellColors, setCellColors] = useState({});
+
+  // Function to generate a random color
+  const getRandomColor = () => {
+    return `#${Math.floor(Math.random() * 16777215).toString(16)}`;
   };
 
-  const handleMouseMove = (event) => {
-    if (!isDrawing) return;
+  const toggleCellSelection = useCallback(() => {
+    setSelectedCells((prevSelectedCells) => {
+      const newSelection = new Set(prevSelectedCells);
+      const start = startCellIndexRef.current;
+      const end = endCellIndexRef.current;
 
-    const mouseX = event.clientX;
-    const mouseY = event.clientY;
+      const startRow = Math.floor(start / numBoxes);
+      const startCol = start % numBoxes;
+      const endRow = Math.floor(end / numBoxes);
+      const endCol = end % numBoxes;
 
-    const clickedBox = getClickedBox(mouseX, mouseY);
+      const newCellColors = { ...cellColors };
 
-    if (clickedBox) {
-      handleBoxClick(clickedBox);
-    }
-  };
+      // Get a random color for the new selection
+      const selectionColor = getRandomColor(); 
 
-  const handleMouseUp = () => {
-    setIsDrawing(false);
-  };
+      for (let i = Math.min(startRow, endRow); i <= Math.max(startRow, endRow); i++) {
+        for (let j = Math.min(startCol, endCol); j <= Math.max(startCol, endCol); j++) {
+          const cellIndex = i * numBoxes + j;
+          if (newSelection.has(cellIndex)) {
+            newSelection.delete(cellIndex);
+            delete newCellColors[cellIndex]; // Remove color when unselected
+          } else {
+            newSelection.add(cellIndex);
+            newCellColors[cellIndex] = selectionColor; // Assign color when selected
+          }
+        }
+      }
 
-  const getClickedBox = (mouseX, mouseY) => {
-    const canvas = document.getElementById("canvas");
-    const canvasRect = canvas.getBoundingClientRect();
-    const mouseXOnCanvas = mouseX - canvasRect.left;
-    const mouseYOnCanvas = mouseY - canvasRect.top;
+      setCellColors(newCellColors);
+      return newSelection;
+    });
 
-    for (let box of boxes) {
-      if (
-        mouseXOnCanvas >= box.x &&
-        mouseXOnCanvas <= box.x + box.width &&
-        mouseYOnCanvas >= box.y &&
-        mouseYOnCanvas <= box.y + box.height
-      ) {
-        return box;
+    // Calculate and log the corners of the selected area
+    const corners = calculateCorners(startCellIndexRef.current, endCellIndexRef.current);
+    console.log('Corners:', corners);
+    // After selection, clear the highlighted cells
+    setHighlightedCells(new Set());
+  }, [numBoxes, cellColors]);
+
+  const updateHighlightedCells = useCallback((cellIndex) => {
+    const newHighlightedCells = new Set();
+    const start = startCellIndexRef.current;
+    const end = cellIndex;
+
+    const startRow = Math.floor(start / numBoxes);
+    const startCol = start % numBoxes;
+    const endRow = Math.floor(end / numBoxes);
+    const endCol = end % numBoxes;
+
+    for (let i = Math.min(startRow, endRow); i <= Math.max(startRow, endRow); i++) {
+      for (let j = Math.min(startCol, endCol); j <= Math.max(startCol, endCol); j++) {
+        newHighlightedCells.add(i * numBoxes + j);
       }
     }
 
-    return null;
+    setHighlightedCells(newHighlightedCells);
+  }, [numBoxes]);
+
+  const handleMouseDown = useCallback((cellIndex) => {
+    setIsDragging(true);
+    startCellIndexRef.current = cellIndex;
+    // Highlight the initial cell on mouse down
+    setHighlightedCells(new Set([cellIndex]));
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+    toggleCellSelection();
+    // Clear highlighted cells on mouse up
+    setHighlightedCells(new Set());
+  }, [toggleCellSelection]);
+
+  // Throttle the mouse enter event to improve performance
+  const throttledMouseEnter = useCallback(throttle((cellIndex) => {
+    if (isDragging) {
+      endCellIndexRef.current = cellIndex;
+      updateHighlightedCells(cellIndex);
+    }
+  }, 10), [isDragging, updateHighlightedCells]);
+
+  const gridStyle = useMemo(() => ({
+    position: 'relative',
+    gridTemplateColumns: `repeat(${numBoxes}, ${boxSize}cm)`,
+    gridTemplateRows: `repeat(${numBoxes}, ${boxSize}cm)`,
+  }), [numBoxes, boxSize]);
+
+  const canvasStyle = useMemo(() => ({
+    position: 'relative',
+    width: `${canvasSize}cm`, // Set the width of the canvas
+    height: `${canvasSize}cm`, // Set the height of the canvas
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center'
+  }), [canvasSize]);
+
+  const imageStyle = {
+    position: 'absolute',
+    maxWidth: '100%',
+    maxHeight: '100%',
+    border: "3px solid #000000",
+    opacity: 0.8 // Set the desired opacity for the image
   };
 
   return (
+
+    <div style={canvasStyle}>
+    <img
+      src={map}
+      alt="Background"
+      style={imageStyle}
+    />
     <div
-      style={{ width: "100%", height: "100vh", position: "relative" }}
-      id="canvas"
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
+      className="grid"
+      style={gridStyle}
       onMouseUp={handleMouseUp}
     >
-      <img
-        src={backgroundImage}
-        alt="Canvas Background"
-        style={{
-          position: "absolute",
-          width: `${canvasSize}cm`,
-          height: `${canvasSize}cm`,
-          zIndex: 0,
-        }}
-      />
-      {boxes.map((box) => (
+      {gridCells.map((_, index) => (
         <div
-          key={box.id}
-          style={{
-            position: "absolute",
-            left: `${box.x}cm`,
-            top: `${box.y}cm`,
-            width: `${box.width}cm`,
-            height: `${box.height}cm`,
-            backgroundColor: box.isSelected ? box.selectedColor || "green" : "transparent",
-            border: box.isCenterLargeBox || box.isSelected ? `1px solid ${box.selectedColor || "red"}` : "1px solid red",
-            zIndex: box.isCenterLargeBox ? 1 : 0,
-          }}
-          onClick={() => handleBoxClick(box)}
-        ></div>
+          key={index}
+          className={`box ${selectedCells.has(index) ? 'selected' : ''} ${highlightedCells.has(index) ? 'highlighted' : ''}`}
+          style={{ backgroundColor: cellColors[index] }} // Apply the color
+          onMouseDown={() => handleMouseDown(index)}
+          onMouseEnter={() => throttledMouseEnter(index)}
+        />
       ))}
     </div>
+  </div>
   );
 };
 
-export default CanvasWithBoxes;
+export default App;
