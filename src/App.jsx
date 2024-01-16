@@ -2,10 +2,10 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { throttle } from 'lodash'; // Ensure lodash is installed
-import map from "./assets/image.png"
+import map from "./assets/image3.png"
 const App = () => {
-  const canvasSize = 52; // in centimeters
-  const boxSize = 0.1; // in centimeters
+  const canvasSize = 520; // in centimeters
+  const boxSize = 1; // in centimeters
   const numBoxes = Math.floor(canvasSize / boxSize);
 
   // Using a Set to track selected cells for more efficient updates
@@ -143,8 +143,7 @@ const App = () => {
     position: 'absolute',
     maxWidth: '100%',
     maxHeight: '100%',
-    border: "3px solid #000000",
-    opacity: 0.8 // Set the desired opacity for the image
+    // border: "3px solid #000000",
   };
 
   return (
