@@ -6,7 +6,7 @@ import axios from 'axios'
 
 const Canvas = () => {
   const canvasSize = 52; // in centimeters
-  const boxSize = 1; // in centimeters
+  const boxSize = 0.1; // in centimeters
   const numBoxes = 50 / boxSize; // Number of boxes per side
 
   const [cellsSelected, setSelectedCells] = useState([]);
