@@ -116,10 +116,10 @@ export const ModalComponent = ({
             </Form.Group>
           }
 
-          {/* <Form.Group className="mb-2" controlId="formCoordinates">
+          <Form.Group className="mb-2" controlId="formCoordinates">
             <Form.Label>Selection Coordinates</Form.Label>
             <Form.Control as="textarea" readOnly value={JSON.stringify(cellCoords)} />
-          </Form.Group> */}
+          </Form.Group>
 
           {/* <Form.Group controlId="formCoordinates">
             <Form.Label>Selected Cells</Form.Label>
