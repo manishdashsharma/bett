@@ -6,8 +6,8 @@ import axios from 'axios'
 
 const Canvas = () => {
   const canvasSize = 52; // in centimeters
-  const boxSize = 0.1; // in centimeters
-  const numBoxes = canvasSize / boxSize; // Number of boxes per side
+  const boxSize = 1; // in centimeters
+  const numBoxes = 50 / boxSize; // Number of boxes per side
 
   const [cellsSelected, setSelectedCells] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -37,6 +37,10 @@ const Canvas = () => {
     setCurrentSelection(selections.length);
     setSelections(prevSelections => [...prevSelections, new Set([cellIndex])]);
   };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
   
 
   const handleMouseEnter = (cellIndex) => {
@@ -64,7 +68,8 @@ const Canvas = () => {
     }
   };
     
-  const handleCellClick = (cellIndex) => {
+  const handleCellClick = (event, cellIndex) => {
+    event.preventDefault();
     // Find the selection that contains the clicked cell
     const selectionIndex = selections.findIndex(selection => selection.has(cellIndex));
     if (selectionIndex !== -1) {
@@ -104,19 +109,7 @@ const Canvas = () => {
   }
 
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    // const selectedArray = Array.from(selections[currentSelection] || []).sort((a, b) => a - b);    console.log('Selected cells:', selectedArray);
-    // // Log the coordinates of the selection
-    // if (selectedArray.length > 0) {
-    //   const topLeftCoords = getCellCoords(selectedArray[0]);
-    //   const bottomRightCoords = getCellCoords(selectedArray[selectedArray.length - 1]);
-    //   const topRightCoords = { x: bottomRightCoords.x, y: topLeftCoords.y };
-    //   const bottomLeftCoords = { x: topLeftCoords.x, y: bottomRightCoords.y };
-    //   console.log(` [[topLeft], [topRight], [bottomLeft], [bottomRight ] 
-    // [[${topLeftCoords.x}, ${topLeftCoords.y}], [${topRightCoords.x}, ${topRightCoords.y}], [${bottomLeftCoords.x}, ${bottomLeftCoords.y}], [${bottomRightCoords.x}, ${bottomRightCoords.y}]]`);
-    // }
-  };
+  
 
   const clearSelectionByCells = (selectedCellsToRemove) => {
     setSelections(prevSelections => {
@@ -136,7 +129,51 @@ const Canvas = () => {
 
   const gridCells = Array.from({ length: numBoxes * numBoxes }, (_, index) => index);
 
-    const canvasStyle = useMemo(() => ({
+  
+  const fetchSelections = async () => {
+    try {
+      const response = await axios.get('https://100085.pythonanywhere.com/api/v1/bett_event/65a927adc5b56cc2cab795f2/');
+      const apiData = response.data.response[0];
+      const newSelections = [];
+      const newSelectionColors = [];
+  
+      // Iterate over each column in the data
+      for (let x = 0; x < numBoxes; x++) {
+        const columnData = apiData[`c${x}`];
+        if (columnData) {
+          // Group cells by color
+          const colorGroups = columnData.reduce((acc, cellData) => {
+            const color = cellData.color_code;
+            if (!acc[color]) {
+              acc[color] = new Set();
+            }
+            const y = parseInt(cellData.row_number.slice(1)); // Convert row_number to y coordinate
+            const cellIndex = (numBoxes - y - 1) * numBoxes + x;
+            acc[color].add(cellIndex);
+            return acc;
+          }, {});
+  
+          // Add each group of cells to the selections
+          for (const [color, indices] of Object.entries(colorGroups)) {
+            newSelections.push(indices);
+            newSelectionColors.push(color);
+          }
+        }
+      }
+  
+      setSelections(newSelections);
+      setSelectionColors(newSelectionColors);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
+    fetchSelections()
+  }, []);
+
+
+  const canvasStyle = useMemo(() => ({
     position: 'relative',
     width: `${canvasSize}cm`, // Set the width of the canvas
     height: `${canvasSize}cm`, // Set the height of the canvas
@@ -144,42 +181,6 @@ const Canvas = () => {
     justifyContent: 'center',
     alignItems: 'center'
   }), [canvasSize]);
-
-  
-  const fetchSelections = async () => {
-    try {
-      const response = await axios.get('https://100085.pythonanywhere.com/api/v1/bett_event/65a8435cc5b56cc2cab6d9b5/');
-      const apiData = response.data.response[0];
-      const newSelections = [];
-      const newSelectionColors = [];
-      for (let x = 1; x <= numBoxes; x++) {
-        const columnData = apiData[`c${x}`];
-        if (columnData) {
-          for (const cellData of columnData) {
-            const y = parseInt(cellData.row_number.slice(1)); // remove the 'r' prefix and convert to number
-            
-            // Adjust the index calculation for the inverted Y-axis
-            const cellIndex = (numBoxes - y - 1) * numBoxes + x; // convert x, y coordinates to cell index
-            console.log("cellIndex", cellIndex);
-            newSelections.push(new Set([cellIndex]));
-            newSelectionColors.push(cellData.color_code); // add color code to the selection colors
-          }
-        }
-      }
-      console.log("NewSelections", newSelections);
-      setSelections(newSelections);
-      setSelectionColors(newSelectionColors); // set the new selection colors
-    } catch (error) {
-      console.error(error);
-    }
-  };
-  
-  useEffect(() => {
-    fetchSelections()
-  }, []);
-
-
-
 
   return (
 
@@ -208,20 +209,17 @@ const Canvas = () => {
       </div>
 
         <div style={canvasStyle}>
-            <div style={{ 
+            
+            {/* <div style={{ 
                 position: 'absolute', 
-                left: `${boxSize * 10}cm`, 
-                top: `${boxSize * 10}cm`, 
-                width: `${canvasSize - boxSize * 20}cm`, 
-                height: `${canvasSize - boxSize * 20}cm`,
-                border: '1px solid black',
+                left: `${boxSize / 2}cm`, 
+                top: `${boxSize / 2}cm`, 
+                width: `calc(${canvasSize}cm - ${boxSize}cm)`, 
+                height: `calc(${canvasSize}cm - ${boxSize}cm)`,
                 zIndex: -1 // To place it beneath the grid
                 }}>
-                <img
-                    src={map}
-                    alt="Background"
-                />
-            </div>
+                
+            </div> */}
     
             <div
                 className="grid"
@@ -229,10 +227,15 @@ const Canvas = () => {
                     display: 'grid',
                     gridTemplateColumns: `repeat(${numBoxes}, ${boxSize}cm)`,
                     gridTemplateRows: `repeat(${numBoxes}, ${boxSize}cm)`,
-                    width: `${canvasSize}cm`,
-                    height: `${canvasSize}cm`,
-                    border: '0.1px solid black',
-                    userSelect: 'none' // Prevent text selection
+                    width: `calc(${canvasSize}cm - 1.9cm)`, 
+                    height: `calc(${canvasSize}cm - 1.9cm)`, //
+                   // border: '1px solid black',
+                    userSelect: 'none', // Prevent text selection
+                    // margin: '1cm', // Add 1cm space around the grid
+                    position: 'absolute', // Position the grid absolutely within the canvas
+                    top: '50%', // Center the grid vertically
+                    left: '50%', // Center the grid horizontally
+                    transform: 'translate(-50%, -50%)' // Ensure the grid is centered correctly
                 }}
                 onMouseLeave={() => isDragging && setIsDragging(false)}
                 >
@@ -245,7 +248,7 @@ const Canvas = () => {
                         key={cellIndex}
                         className={`box ${isSelected ? 'selected' : ''}`}
                         style={{
-                            border: '0.1px solid #EAF0F1',
+                            border: '1px solid #ddd',
                             boxSizing: 'border-box',
                             cursor: 'pointer',
                             backgroundColor: color
@@ -254,9 +257,34 @@ const Canvas = () => {
                         onMouseEnter={() => handleMouseEnter(cellIndex)}
                         onMouseUp={handleMouseUp}
                         onClick={() => handleCellClick(cellIndex)}
+                        onContextMenu={(event) => handleCellClick(event, cellIndex)}
                         />
                     );
                 })}
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        width: `calc(${canvasSize}cm - 1.9cm - ${boxSize}cm)`,
+                        height: `calc(${canvasSize}cm - 1.9cm - ${boxSize}cm)`,
+                        // boxSizing: 'border-box', // Include padding and border in the element's width and height
+                        transform: 'translate(-50%, -50%)', // Center the div
+                        zIndex: -1,
+                        border: '1px solid #f00000'
+                    }}
+                >
+                    <img
+                        src={map}
+                        alt="Background"
+                        style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            // zIndex: -1,
+                        }}
+                    />
+                </div>
             </div>
         </div>
 
