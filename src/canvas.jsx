@@ -248,7 +248,7 @@ const Canvas = () => {
                         key={cellIndex}
                         className={`box ${isSelected ? 'selected' : ''}`}
                         style={{
-                            border: '1px solid #ddd',
+                            border: '0.1px solid #ddd',
                             boxSizing: 'border-box',
                             cursor: 'pointer',
                             backgroundColor: color
@@ -271,7 +271,6 @@ const Canvas = () => {
                         // boxSizing: 'border-box', // Include padding and border in the element's width and height
                         transform: 'translate(-50%, -50%)', // Center the div
                         zIndex: -1,
-                        border: '1px solid #f00000'
                     }}
                 >
                     <img
