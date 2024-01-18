@@ -7,7 +7,7 @@ import axios from 'axios'
 const Canvas = () => {
   const canvasSize = 52; // in centimeters
   const boxSize = 0.1; // in centimeters
-  const numBoxes = 50 / boxSize; // Number of boxes per side
+  const numBoxes = (50 / boxSize)+1; // Number of boxes per side
 
   const [cellsSelected, setSelectedCells] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -271,6 +271,7 @@ const Canvas = () => {
                         // boxSizing: 'border-box', // Include padding and border in the element's width and height
                         transform: 'translate(-50%, -50%)', // Center the div
                         zIndex: -1,
+                        
                     }}
                 >
                     <img
@@ -280,6 +281,7 @@ const Canvas = () => {
                             width: '100%',
                             height: '100%',
                             objectFit: 'cover',
+                            border: '0.1px solid red'
                             // zIndex: -1,
                         }}
                     />
