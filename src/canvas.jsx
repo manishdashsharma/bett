@@ -20,6 +20,8 @@ const Canvas = () => {
   const [showModal, setShowModal] = useState(false);
   const [coordinates, setCoordinates] = useState([]);
   const [selectionColors, setSelectionColors] = useState([]);
+
+  const [ isLoading, setIsLoading ] = useState(false)
   
   const getCellCoords = (index) => ({
     x: index % numBoxes,
@@ -43,26 +45,50 @@ const Canvas = () => {
   };
   
 
+  // const handleMouseEnter = (cellIndex) => {
+  //   if (isDragging && currentSelection !== null) {
+  //     setEndCell(cellIndex);
+  //     setSelections(prevSelections => {
+  //       const newSelections = [...prevSelections];
+  //       const currentSel = new Set(newSelections[currentSelection]);
+  //       const startCoords = getCellCoords(startCell);
+  //       const endCoords = getCellCoords(cellIndex);
+  //       const minX = Math.min(startCoords.x, endCoords.x);
+  //       const maxX = Math.max(startCoords.x, endCoords.x);
+  //       // Adjust for the inverted y-axis due to the origin being at the bottom left
+  //       const minY = Math.min(startCoords.y, endCoords.y);
+  //       const maxY = Math.max(startCoords.y, endCoords.y);
+  //       for (let x = minX; x <= maxX; x++) {
+  //         for (let y = minY; y <= maxY; y++) {
+  //           // Adjust the index calculation for the inverted Y-axis
+  //           currentSel.add((numBoxes - y - 1) * numBoxes + x);
+  //         }
+  //       }
+  //       newSelections[currentSelection] = currentSel;
+  //       return newSelections;
+  //     });
+  //   }
+  // };
+
   const handleMouseEnter = (cellIndex) => {
     if (isDragging && currentSelection !== null) {
       setEndCell(cellIndex);
       setSelections(prevSelections => {
         const newSelections = [...prevSelections];
-        const currentSel = new Set(newSelections[currentSelection]);
+        const newSelection = new Set();
         const startCoords = getCellCoords(startCell);
         const endCoords = getCellCoords(cellIndex);
         const minX = Math.min(startCoords.x, endCoords.x);
         const maxX = Math.max(startCoords.x, endCoords.x);
-        // Adjust for the inverted y-axis due to the origin being at the bottom left
         const minY = Math.min(startCoords.y, endCoords.y);
         const maxY = Math.max(startCoords.y, endCoords.y);
         for (let x = minX; x <= maxX; x++) {
           for (let y = minY; y <= maxY; y++) {
-            // Adjust the index calculation for the inverted Y-axis
-            currentSel.add((numBoxes - y - 1) * numBoxes + x);
+            const index = (numBoxes - y - 1) * numBoxes + x;
+            newSelection.add(index);
           }
         }
-        newSelections[currentSelection] = currentSel;
+        newSelections[currentSelection] = newSelection;
         return newSelections;
       });
     }
@@ -131,6 +157,7 @@ const Canvas = () => {
 
   
   const fetchSelections = async () => {
+    setIsLoading(true)
     try {
       const response = await axios.get('https://100085.pythonanywhere.com/api/v1/bett_event/65a927adc5b56cc2cab795f2/');
       const apiData = response.data.response[0];
@@ -163,7 +190,9 @@ const Canvas = () => {
   
       setSelections(newSelections);
       setSelectionColors(newSelectionColors);
+      setIsLoading(false)
     } catch (error) {
+      setIsLoading(false)
       console.error(error);
     }
   };
@@ -191,20 +220,22 @@ const Canvas = () => {
           display: 'flex', 
           flexDirection: 'row', 
           gap: 10, zIndex: 10,
+          left: '0.95cm',
           position: 'fixed',
         }}>
 
         <Button 
+          size='sm'
           variant='warning'
-          onClick={() => setSelections([])} // Clears all selections// Adjust the position as needed
+          onClick={() => setSelections([])}
         >
           Clear All Selections
         </Button>
         <Button
+          size='sm'
           variant='success'
-          onClick={fetchSelections} // Clears all selections// Adjust the position as needed
-        >
-          Refresh
+          onClick={fetchSelections}>
+          {isLoading ? 'Refreshing...' : 'Refresh'}
         </Button>
       </div>
 
@@ -240,26 +271,28 @@ const Canvas = () => {
                 onMouseLeave={() => isDragging && setIsDragging(false)}
                 >
                 {gridCells.map((cellIndex) => {
-                    const selectionIndex = selections.findIndex(selection => selection.has(cellIndex));
-                    const isSelected = selectionIndex !== -1;
-                    const color = isSelected ? selectionColors[selectionIndex] : 'transparent';
-                    return (
-                        <div
-                        key={cellIndex}
-                        className={`box ${isSelected ? 'selected' : ''}`}
-                        style={{
-                            border: '0.1px solid #ddd',
-                            boxSizing: 'border-box',
-                            cursor: 'pointer',
-                            backgroundColor: color
-                        }}
-                        onMouseDown={() => handleMouseDown(cellIndex)}
-                        onMouseEnter={() => handleMouseEnter(cellIndex)}
-                        onMouseUp={handleMouseUp}
-                        onClick={() => handleCellClick(cellIndex)}
-                        onContextMenu={(event) => handleCellClick(event, cellIndex)}
-                        />
-                    );
+                  const selectionIndex = selections.findIndex(selection => selection.has(cellIndex));
+                  const isSelected = selectionIndex !== -1;
+                  const color = isSelected ? selectionColors[selectionIndex] : 'transparent';
+                  const { x, y } = getCellCoords(cellIndex); // Get the coordinates for the tooltip
+                  return (
+                    <div
+                      key={cellIndex}
+                      className={`box ${isSelected ? 'selected' : ''}`}
+                      style={{
+                        border: '0.1px solid #ddd',
+                        boxSizing: 'border-box',
+                        cursor: 'pointer',
+                        backgroundColor: color
+                      }}
+                      title={`Row: ${y}, Col: ${x}`} // Set the title attribute for the tooltip
+                      onMouseDown={() => handleMouseDown(cellIndex)}
+                      onMouseEnter={() => handleMouseEnter(cellIndex)}
+                      onMouseUp={handleMouseUp}
+                      onClick={() => handleCellClick(cellIndex)}
+                      onContextMenu={(event) => handleCellClick(event, cellIndex)}
+                    />
+                  );
                 })}
                 <div
                     style={{
@@ -271,7 +304,6 @@ const Canvas = () => {
                         // boxSizing: 'border-box', // Include padding and border in the element's width and height
                         transform: 'translate(-50%, -50%)', // Center the div
                         zIndex: -1,
-                        
                     }}
                 >
                     <img
@@ -281,7 +313,7 @@ const Canvas = () => {
                             width: '100%',
                             height: '100%',
                             objectFit: 'cover',
-                            border: '0.1px solid red'
+                            border: '0.1px solid #f00000'
                             // zIndex: -1,
                         }}
                     />
@@ -305,3 +337,5 @@ const Canvas = () => {
 };
 
 export default Canvas;
+
+
