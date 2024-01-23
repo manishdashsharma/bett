@@ -159,7 +159,7 @@ const Canvas = () => {
   const fetchSelections = async () => {
     setIsLoading(true)
     try {
-      const response = await axios.get('https://100085.pythonanywhere.com/api/v1/bett_event/65a927adc5b56cc2cab795f2/');
+      const response = await axios.get('https://100085.pythonanywhere.com/api/v1/bett_event/65ab86f2c5b56cc2cab8a973/');
       const apiData = response.data.response[0];
       const newSelections = [];
       const newSelectionColors = [];

@@ -65,7 +65,7 @@ export const ModalComponent = ({
     
       console.log(data);
   
-      const response = await fetch('https://100085.pythonanywhere.com/api/v1/bett_event/65a927adc5b56cc2cab795f2/', {
+      const response = await fetch('https://100085.pythonanywhere.com/api/v1/bett_event/65ab86f2c5b56cc2cab8a973/', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
